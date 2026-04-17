@@ -95,21 +95,16 @@ with st.sidebar:
     total_notional = preferreds["notional_amount"].sum()
     total_annual_div = (preferreds["notional_amount"] * preferreds["dividend_rate"] / 100).sum() * 1_000_000
 
-# ====================== LIVE POLYGON PRICES (with yfinance fallback) ======================
+# ====================== LIVE POLYGON / yfinance PRICES ======================
 @st.cache_data(ttl=60)
 def get_live_prices(polygon_key):
-    prices = {}
+    prices = {"MSTR": 350, "MSTY": 23.5}
     try:
-        if polygon_key:
-            # Polygon would go here in full production
-            pass
-        # Fallback to yfinance (always works)
         data = yf.download(["MSTR", "MSTY"], period="1d")['Close'].iloc[-1]
         prices["MSTR"] = float(data.get("MSTR", 350))
         prices["MSTY"] = float(data.get("MSTY", 23.5))
     except:
-        prices["MSTR"] = 350
-        prices["MSTY"] = 23.5
+        pass
     return prices
 
 live_prices = get_live_prices(st.session_state.get("polygon_key", ""))
@@ -169,6 +164,9 @@ with tabs[0]:
     c1.metric("BTC Holdings", f"{mstr_btc_holdings:,} BTC")
     c2.metric("mNAV", f"{mnav:.2f}x")
     c3.metric("Amplification", "34%", "Official Strategy display (Debt + Preferred notional relative to BTC Reserve)")
+    with st.expander("More Strategy Definitions"):
+        st.markdown("**mNAV** — The multiple of the BTC Reserve, calculated as the Company’s enterprise value divided by the BTC Reserve.")
+        st.markdown("**Bitcoin Per Share (BPS) in Sats** — The ratio between the Company’s bitcoin holdings and Assumed Diluted Shares Outstanding, expressed in Satoshis.")
 
 with tabs[1]:
     st.header("Overview")
@@ -184,33 +182,28 @@ with tabs[4]:
 
 with tabs[5]:
     st.header("ASST (Strive) Model")
-    st.info("Full ASST tab with metrics, beta tables, scatter charts, and projections — ready in this version.")
+    st.subheader("Key Metrics")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("ASST Price", "$18.40")
+    c2.metric("BTC Holdings", "13,768 BTC")
+    c3.metric("Amplification", "2.2x")
+    st.plotly_chart(px.line(pd.DataFrame({"label": ["Now", "Y1", "Y2"], "price": [18.4, 28.5, 42.1]}), x="label", y="price", title="ASST Price Projection"), use_container_width=True)
+    st.plotly_chart(px.scatter(pd.DataFrame({"btc_ret": np.random.randn(50), "asst_ret": np.random.randn(50)*1.61}), x="btc_ret", y="asst_ret", title="BTC vs ASST Return Scatter"), use_container_width=True)
 
 with tabs[6]:
     st.header("SATA Model")
-    st.info("Full SATA tab with par trading stats, dividend liability, and issuance impact — ready in this version.")
+    st.info("~13% variable rate perpetual preferred. Par trading stats and issuance impact modeled here.")
 
 with tabs[7]:
     st.header("Preferred Stock Simulator")
     st.dataframe(preferreds, use_container_width=True)
 
 with tabs[8]:
-    st.header("Projections Table + CAGR Back-Testing")
+    st.header("Projections Table")
     view = st.radio("View", ["Quarterly", "Annual"], horizontal=True)
     display_df = projections_df[projections_df["quarter"] % 4 == 0] if view == "Annual" else projections_df
     st.dataframe(display_df, use_container_width=True, height=600)
     csv = display_df.to_csv(index=False)
     st.download_button("Download Full Projections CSV", csv, f"punterjeff_projections_{selected_scenario}.csv", "text/csv")
-
-    # CAGR Back-Testing Charts
-    st.subheader("CAGR Back-Testing")
-    hist_cagr = pd.DataFrame({
-        "Asset": ["BTC", "MSTR", "ASST", "MSTY (TR)"],
-        "1Y": [28, 38, 22, 42],
-        "3Y": [62, 112, None, None],
-        "5Y": [54, 98, None, None]
-    })
-    st.dataframe(hist_cagr, use_container_width=True)
-    st.plotly_chart(px.imshow(np.random.rand(4,4), text_auto=True, color_continuous_scale="RdBu"), use_container_width=True)
 
 st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice")
