@@ -167,6 +167,7 @@ with tabs[0]:
     with st.expander("More Strategy Definitions"):
         st.markdown("**mNAV** — The multiple of the BTC Reserve, calculated as the Company’s enterprise value divided by the BTC Reserve.")
         st.markdown("**Bitcoin Per Share (BPS) in Sats** — The ratio between the Company’s bitcoin holdings and Assumed Diluted Shares Outstanding, expressed in Satoshis.")
+        st.markdown("**BTC Yield** — The percentage change in BPS from the beginning of a period to the end of a period.")
 
 with tabs[1]:
     st.header("Overview")
@@ -176,48 +177,25 @@ with tabs[1]:
     c3.metric("MSTY Est. Weekly Div", f"${msty_div_est/52:,.2f}")
     c4.metric("Pref. Annual Drag", f"${total_annual_div:,.0f}")
 
-with tabs[2]:  # BTC Model
+with tabs[2]:  # BTC
     st.header("Bitcoin Model")
     st.metric("Current BTC Price", f"${btc_price:,.0f}")
     fig = px.line(projections_df, x="label", y="btc_price", title="BTC Price Projection")
     st.plotly_chart(fig, use_container_width=True)
-    st.metric("5-Year BTC Holdings", f"{projections_df.iloc[-1]['btc_holdings']:,} BTC")
 
-with tabs[3]:  # MSTR Model
+with tabs[3]:  # MSTR
     st.header("MSTR Model")
     fig = px.line(projections_df, x="label", y=["mnav", "mstr_price"], title="mNAV vs MSTR Price")
     st.plotly_chart(fig, use_container_width=True)
     st.metric("Projected MSTR Price", f"${mstr_proj_price:,.0f}")
 
-with tabs[4]:  # MSTY Model
+with tabs[4]:  # MSTY
     st.header("MSTY Model")
     st.metric("Live MSTY Price", f"${live_prices.get('MSTY', 23.5):,.2f}")
     fig = px.line(projections_df, x="label", y="msty_dividend_monthly", title="MSTY Monthly Dividend Projection")
     st.plotly_chart(fig, use_container_width=True)
 
-with tabs[5]:  # ASST Model
+with tabs[5]:  # ASST
     st.header("ASST (Strive) Model")
     st.metric("ASST Price", "$18.40")
-    st.plotly_chart(px.line(pd.DataFrame({"label": ["Now", "Y1", "Y2"], "price": [18.4, 28.5, 42.1]}), x="label", y="price", title="ASST Price Projection"), use_container_width=True)
-    st.plotly_chart(px.scatter(pd.DataFrame({"btc_ret": np.random.randn(50), "asst_ret": np.random.randn(50)*1.61}), x="btc_ret", y="asst_ret", title="BTC vs ASST Return Scatter"), use_container_width=True)
-
-with tabs[6]:  # SATA Model
-    st.header("SATA Model")
-    st.metric("SATA Dividend Rate", "13.0%")
-    st.metric("Par Trading Days", "34%")
-    st.info("~13% variable rate perpetual preferred. Par trading stats and issuance impact modeled here.")
-
-with tabs[7]:  # Preferreds
-    st.header("Preferred Stock Simulator")
-    st.dataframe(preferreds, use_container_width=True)
-    st.metric("Total Annual Dividend Liability", f"${total_annual_div:,.0f}")
-
-with tabs[8]:
-    st.header("Projections Table")
-    view = st.radio("View", ["Quarterly", "Annual"], horizontal=True)
-    display_df = projections_df[projections_df["quarter"] % 4 == 0] if view == "Annual" else projections_df
-    st.dataframe(display_df, use_container_width=True, height=600)
-    csv = display_df.to_csv(index=False)
-    st.download_button("Download Full Projections CSV", csv, f"punterjeff_projections_{selected_scenario}.csv", "text/csv")
-
-st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice
+    st.plotly_chart(px.line(pd.DataFrame({"label": ["Now", "Y1", "Y2"], "price": [18.4, 28.5, 42.1]}), x
