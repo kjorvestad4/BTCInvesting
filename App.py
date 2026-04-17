@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import numpy as np
 
 st.set_page_config(page_title="PunterJeff MSTR Projection Engine", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
@@ -63,14 +64,13 @@ with st.sidebar:
     premium_multiple = st.slider("Premium Multiple over mNAV", 1.0, 3.0, float(scenario["premium_multiple"]))
     earnings_cagr = st.slider("Earnings CAGR (%) — PunterJeff", 30, 100, scenario["earnings_cagr"])
 
-    # AMPLIFICATION — NOW MATCHES STRATEGY.COM EXACTLY
+    # Amplification — matches Strategy.com exactly
     st.subheader("Amplification")
     st.metric(
         label="Amplification (Official Strategy)",
         value="34%",
         help="Official Strategy display (Debt + Preferred notional relative to BTC Reserve). This is the leverage/amplification metric shown on strategy.com/notes."
     )
-    # Internal model multiplier used for calculations
     amplification_ratio = st.slider("PunterJeff Model Multiplier (for projections)", 1.0, 5.0, float(scenario["amplification_ratio"]))
 
     # Preferred Stock Editor
@@ -139,6 +139,7 @@ tabs = st.tabs([
 
 with tabs[0]:
     st.header("Strategy Official Dashboard Mirror")
+    st.caption("Verbatim definitions from https://www.strategy.com/notes")
     c1, c2, c3 = st.columns(3)
     c1.metric("BTC Holdings", f"{mstr_btc_holdings:,} BTC")
     c2.metric("mNAV", f"{mnav:.2f}x")
@@ -151,6 +152,21 @@ with tabs[1]:
     c2.metric("mNAV / Share", f"${mnav:,.2f}")
     c3.metric("MSTY Est. Weekly Div", f"${msty_div_est/52:,.2f}")
     c4.metric("Pref. Annual Drag", f"${total_annual_div:,.0f}")
+
+with tabs[2]:  # BTC Model
+    st.header("Bitcoin Model")
+    fig = px.line(projections_df, x="label", y="btc_price", title="BTC Price Projection")
+    st.plotly_chart(fig, use_container_width=True)
+
+with tabs[3]:  # MSTR Model
+    st.header("MSTR Model")
+    fig = px.line(projections_df, x="label", y=["mnav", "mstr_price"], title="mNAV vs MSTR Price")
+    st.plotly_chart(fig, use_container_width=True)
+
+with tabs[4]:  # MSTY Model
+    st.header("MSTY Model")
+    fig = px.line(projections_df, x="label", y="msty_dividend_monthly", title="MSTY Monthly Dividend Projection")
+    st.plotly_chart(fig, use_container_width=True)
 
 with tabs[7]:
     st.header("Preferred Stock Simulator")
