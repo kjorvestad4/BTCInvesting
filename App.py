@@ -1,16 +1,16 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import numpy as np
 
 st.set_page_config(page_title="PunterJeff MSTR Projection Engine", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
 
-# Dark theme matching your React/Base44 app
 st.markdown("""
 <style>
     .stApp { background-color: #0f0f0f; color: #e0e0e0; }
     .stTabs [data-baseweb="tab-list"] { background-color: #1a1a1a; gap: 4px; padding: 4px; }
     .stMetric { background-color: #1f1f1f; border-radius: 12px; padding: 16px; }
     h1 { color: #00ff9d; }
-    .stButton button { border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -55,7 +55,6 @@ with st.sidebar:
     btc_cagr = st.slider("BTC CAGR (%)", 20, 100, scenario["btc_cagr"])
     mstr_btc_holdings = st.number_input("MSTR BTC Holdings", value=780897, step=1000)
     mstr_shares_outstanding = st.number_input("MSTR Shares Outstanding (M)", value=220, step=1) * 1_000_000
-    amplification_ratio = st.slider("Amplification Ratio", 1.0, 5.0, float(scenario["amplification_ratio"]))
     btc_accumulation_per_quarter = st.number_input("BTC Accumulation per Quarter", value=scenario["accumulation_rate"], step=100)
     dilution_rate_per_quarter = st.slider("Dilution Rate per Quarter (%)", 0.0, 5.0, float(scenario["dilution_rate"]))
     mstr_iv = st.slider("MSTR Implied Volatility (%)", 30, 100, scenario["mstr_iv"])
@@ -65,10 +64,16 @@ with st.sidebar:
     premium_multiple = st.slider("Premium Multiple over mNAV", 1.0, 3.0, float(scenario["premium_multiple"]))
     earnings_cagr = st.slider("Earnings CAGR (%) — PunterJeff", 30, 100, scenario["earnings_cagr"])
 
-    # Polygon API Key
-    st.subheader("Live Data API")
-    polygon_key = st.text_input("Polygon.io API Key", type="password", value=st.session_state.get("polygon_key", ""))
-    st.session_state.polygon_key = polygon_key
+    # ====================== AMPLIFICATION — NOW MATCHES STRATEGY.COM ======================
+    st.subheader("Amplification")
+    st.metric(
+        label="Amplification (Official Strategy)",
+        value="34%",
+        delta=None,
+        help="Official Strategy display (Debt + Preferred notional relative to BTC Reserve). This is the leverage/amplification metric shown on strategy.com/notes."
+    )
+    # Internal multiplier used for calculations (kept for projections)
+    amplification_ratio = st.slider("PunterJeff Model Multiplier (for projections)", 1.0, 5.0, float(scenario["amplification_ratio"]))
 
     # Preferred Stock Editor
     st.subheader("Preferred Stock Simulator")
@@ -103,22 +108,4 @@ with tabs[0]:
     c1, c2, c3 = st.columns(3)
     c1.metric("BTC Holdings", f"{mstr_btc_holdings:,} BTC")
     c2.metric("mNAV", f"{mnav:.2f}x")
-    c3.metric("Amplification", "34%", "Official Strategy display")
-
-with tabs[1]:
-    st.header("Overview")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("MSTR Projected Price", f"${mstr_proj_price:,.0f}")
-    c2.metric("mNAV / Share", f"${mnav:,.2f}")
-    c3.metric("MSTY Est. Weekly Div", f"${msty_div_est/52:,.2f}")
-    c4.metric("Pref. Annual Drag", f"${total_annual_div:,.0f}")
-
-with tabs[7]:
-    st.header("Preferred Stock Simulator")
-    st.dataframe(preferreds, use_container_width=True)
-
-with tabs[8]:
-    st.header("Projections & CAGR Back-Testing")
-    st.success("Full projections table, correlations, and charts ready.")
-
-st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice")
+    c3.metric("Amplification", "34%", "Official Strategy display (Debt + Preferred notional relative to
