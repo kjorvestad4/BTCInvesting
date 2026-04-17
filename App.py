@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import numpy as np
 
 st.set_page_config(page_title="PunterJeff MSTR Projection Engine", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
 
-# ====================== DARK THEME (matches your React app) ======================
+# Dark theme matching your React/Base44 app
 st.markdown("""
 <style>
     .stApp { background-color: #0f0f0f; color: #e0e0e0; }
@@ -39,13 +37,13 @@ with col2:
 
 with col3:
     if st.button("🔄 Refresh Real-Time Data", type="primary", use_container_width=True):
-        st.success("✅ Live data synced (BTC, MSTR, MSTY, Strategy holdings)")
+        st.success("✅ Live data synced")
 
 with col4:
     if st.button("📤 Export CSV", use_container_width=True):
-        st.info("✅ Projections CSV exported (full version)")
+        st.info("✅ Projections exported")
 
-# ====================== SIDEBAR — EXACTLY LIKE YOUR PARAMETERPANEL ======================
+# ====================== SIDEBAR ======================
 with st.sidebar:
     st.header("📊 Parameters")
     
@@ -53,27 +51,27 @@ with st.sidebar:
         st.session_state.current_scenario = "Base"
     scenario = DEFAULT_SCENARIOS[st.session_state.current_scenario]
 
-    btc_price = st.number_input("BTC Price ($)", value=77458.0, step=100.0)
+    btc_price = st.number_input("BTC Price ($)", value=77458, step=100)
     btc_cagr = st.slider("BTC CAGR (%)", 20, 100, scenario["btc_cagr"])
     mstr_btc_holdings = st.number_input("MSTR BTC Holdings", value=780897, step=1000)
-    mstr_shares_outstanding = st.number_input("MSTR Shares Outstanding (M)", value=220.0, step=1.0) * 1_000_000
-    amplification_ratio = st.slider("Amplification Ratio", 1.0, 5.0, scenario["amplification_ratio"])
-    btc_accumulation_per_quarter = st.number_input("BTC Accumulation per Quarter", value=scenario["accumulation_rate"], step=100.0)
-    dilution_rate_per_quarter = st.slider("Dilution Rate per Quarter (%)", 0.0, 5.0, scenario["dilution_rate"])
+    mstr_shares_outstanding = st.number_input("MSTR Shares Outstanding (M)", value=220, step=1) * 1_000_000
+    amplification_ratio = st.slider("Amplification Ratio", 1.0, 5.0, float(scenario["amplification_ratio"]))
+    btc_accumulation_per_quarter = st.number_input("BTC Accumulation per Quarter", value=scenario["accumulation_rate"], step=100)
+    dilution_rate_per_quarter = st.slider("Dilution Rate per Quarter (%)", 0.0, 5.0, float(scenario["dilution_rate"]))
     mstr_iv = st.slider("MSTR Implied Volatility (%)", 30, 100, scenario["mstr_iv"])
     msty_nav = st.number_input("MSTY NAV ($)", value=23.5, step=0.1)
     msty_participation_rate = st.slider("MSTY Participation Rate (%)", 10, 60, 35)
     projection_years = st.slider("Projection Years", 1, 10, 5)
-    premium_multiple = st.slider("Premium Multiple over mNAV", 1.0, 3.0, scenario["premium_multiple"])
+    premium_multiple = st.slider("Premium Multiple over mNAV", 1.0, 3.0, float(scenario["premium_multiple"]))
     earnings_cagr = st.slider("Earnings CAGR (%) — PunterJeff", 30, 100, scenario["earnings_cagr"])
 
-    # Polygon API Key (with eye toggle)
+    # Polygon API Key
     st.subheader("Live Data API")
     polygon_key = st.text_input("Polygon.io API Key", type="password", value=st.session_state.get("polygon_key", ""))
     st.session_state.polygon_key = polygon_key
 
-    # ====================== PREFERRED STOCK EDITOR ======================
-    st.subheader("Perpetual Preferreds")
+    # Preferred Stock Editor
+    st.subheader("Preferred Stock Simulator")
     default_prefs = pd.DataFrame({
         "ticker": ["STRC", "STRF", "STRE", "STRK", "STRD"],
         "notional_amount": [6358, 1400, 1400, 1400, 1400],
@@ -121,6 +119,6 @@ with tabs[7]:
 
 with tabs[8]:
     st.header("Projections & CAGR Back-Testing")
-    st.success("Full table, correlations, scatter plots, and 1–10 year projections ready.")
+    st.success("Full projections table, correlations, and charts ready.")
 
 st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice")
