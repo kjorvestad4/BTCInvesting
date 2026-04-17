@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import numpy as np
 
 st.set_page_config(page_title="PunterJeff MSTR Projection Engine", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
@@ -41,7 +40,7 @@ with col3:
 
 with col4:
     if st.button("📤 Export CSV", use_container_width=True):
-        st.info("✅ Projections exported")
+        st.info("✅ CSV ready — see Projections tab")
 
 # ====================== SIDEBAR ======================
 with st.sidebar:
@@ -64,15 +63,14 @@ with st.sidebar:
     premium_multiple = st.slider("Premium Multiple over mNAV", 1.0, 3.0, float(scenario["premium_multiple"]))
     earnings_cagr = st.slider("Earnings CAGR (%) — PunterJeff", 30, 100, scenario["earnings_cagr"])
 
-    # ====================== AMPLIFICATION — NOW MATCHES STRATEGY.COM ======================
+    # AMPLIFICATION — NOW MATCHES STRATEGY.COM EXACTLY
     st.subheader("Amplification")
     st.metric(
         label="Amplification (Official Strategy)",
         value="34%",
-        delta=None,
         help="Official Strategy display (Debt + Preferred notional relative to BTC Reserve). This is the leverage/amplification metric shown on strategy.com/notes."
     )
-    # Internal multiplier used for calculations (kept for projections)
+    # Internal model multiplier used for calculations
     amplification_ratio = st.slider("PunterJeff Model Multiplier (for projections)", 1.0, 5.0, float(scenario["amplification_ratio"]))
 
     # Preferred Stock Editor
@@ -97,6 +95,42 @@ mnav = (mstr_btc_holdings * btc_price - total_pref_usd) / mstr_shares_outstandin
 mstr_proj_price = mnav * amplification_ratio * premium_multiple
 msty_div_est = mstr_proj_price * (mstr_iv / 100) * (msty_participation_rate / 100)
 
+# ====================== FULL PROJECTIONS ======================
+def generate_projections():
+    projections = []
+    btc_holdings = mstr_btc_holdings
+    shares_m = mstr_shares_outstanding / 1_000_000
+    btc_price_current = btc_price
+    quarterly_growth = (1 + btc_cagr / 100) ** 0.25
+    total_pref = total_pref_usd
+
+    for q in range(projection_years * 4 + 1):
+        if q > 0:
+            btc_price_current *= quarterly_growth
+            btc_holdings += btc_accumulation_per_quarter
+            shares_m *= (1 + dilution_rate_per_quarter / 100)
+        mnav_val = (btc_holdings * btc_price_current - total_pref) / (shares_m * 1_000_000)
+        mstr_price_val = mnav_val * amplification_ratio * premium_multiple
+        msty_div_monthly = mstr_price_val * (mstr_iv / 100) * (msty_participation_rate / 100) * 0.289
+
+        projections.append({
+            "quarter": q,
+            "label": "Now" if q == 0 else f"Y{q//4 + 1}Q{(q%4)+1}",
+            "btc_price": round(btc_price_current),
+            "btc_holdings": round(btc_holdings),
+            "shares_outstanding_m": round(shares_m, 1),
+            "mnav": round(mnav_val, 2),
+            "mstr_price": round(mstr_price_val),
+            "premium_to_nav": round(((mstr_price_val / mnav_val) - 1) * 100, 1) if mnav_val > 0 else 0,
+            "btc_nav": round(btc_holdings * btc_price_current),
+            "market_cap": round(mstr_price_val * shares_m * 1_000_000),
+            "msty_dividend_monthly": round(msty_div_monthly, 2),
+            "msty_yield": round((msty_div_monthly * 12 / msty_nav) * 100, 1) if msty_nav > 0 else 0,
+        })
+    return pd.DataFrame(projections)
+
+projections_df = generate_projections()
+
 # ====================== TABS ======================
 tabs = st.tabs([
     "📋 Strategy Mirror", "📈 Overview", "₿ BTC", "📈 MSTR",
@@ -108,4 +142,26 @@ with tabs[0]:
     c1, c2, c3 = st.columns(3)
     c1.metric("BTC Holdings", f"{mstr_btc_holdings:,} BTC")
     c2.metric("mNAV", f"{mnav:.2f}x")
-    c3.metric("Amplification", "34%", "Official Strategy display (Debt + Preferred notional relative to
+    c3.metric("Amplification", "34%", "Official Strategy display (Debt + Preferred notional relative to BTC Reserve)")
+
+with tabs[1]:
+    st.header("Overview")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("MSTR Projected Price", f"${mstr_proj_price:,.0f}")
+    c2.metric("mNAV / Share", f"${mnav:,.2f}")
+    c3.metric("MSTY Est. Weekly Div", f"${msty_div_est/52:,.2f}")
+    c4.metric("Pref. Annual Drag", f"${total_annual_div:,.0f}")
+
+with tabs[7]:
+    st.header("Preferred Stock Simulator")
+    st.dataframe(preferreds, use_container_width=True)
+
+with tabs[8]:
+    st.header("Projections Table")
+    view = st.radio("View", ["Quarterly", "Annual"], horizontal=True)
+    display_df = projections_df[projections_df["quarter"] % 4 == 0] if view == "Annual" else projections_df
+    st.dataframe(display_df, use_container_width=True, height=600)
+    csv = display_df.to_csv(index=False)
+    st.download_button("Download Full Projections CSV", csv, f"punterjeff_projections_{selected_scenario}.csv", "text/csv")
+
+st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice")
