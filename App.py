@@ -79,6 +79,17 @@ with st.sidebar:
     polygon_key = st.text_input("Polygon.io API Key", type="password", value=st.session_state.get("polygon_key", ""))
     st.session_state.polygon_key = polygon_key
 
+    # Live prices in sidebar
+    live_prices = {"MSTR": 350, "MSTY": 23.5}
+    try:
+        data = yf.download(["MSTR", "MSTY"], period="1d")['Close'].iloc[-1]
+        live_prices["MSTR"] = float(data.get("MSTR", 350))
+        live_prices["MSTY"] = float(data.get("MSTY", 23.5))
+    except:
+        pass
+    st.metric("Live MSTR Price", f"${live_prices['MSTR']:,.2f}")
+    st.metric("Live MSTY Price", f"${live_prices['MSTY']:,.2f}")
+
     # Preferred Stock Editor
     st.subheader("Preferred Stock Simulator")
     default_prefs = pd.DataFrame({
@@ -94,20 +105,6 @@ with st.sidebar:
 
     total_notional = preferreds["notional_amount"].sum()
     total_annual_div = (preferreds["notional_amount"] * preferreds["dividend_rate"] / 100).sum() * 1_000_000
-
-# ====================== LIVE PRICES ======================
-@st.cache_data(ttl=60)
-def get_live_prices():
-    prices = {"MSTR": 350, "MSTY": 23.5}
-    try:
-        data = yf.download(["MSTR", "MSTY"], period="1d")['Close'].iloc[-1]
-        prices["MSTR"] = float(data.get("MSTR", 350))
-        prices["MSTY"] = float(data.get("MSTY", 23.5))
-    except:
-        pass
-    return prices
-
-live_prices = get_live_prices()
 
 # ====================== CALCULATIONS ======================
 total_pref_usd = total_notional * 1_000_000
@@ -198,4 +195,28 @@ with tabs[4]:  # MSTY
 with tabs[5]:  # ASST
     st.header("ASST (Strive) Model")
     st.metric("ASST Price", "$18.40")
-    st.plotly_chart(px.line(pd.DataFrame({"label": ["Now", "Y1", "Y2"], "price": [18.4, 28.5, 42.1]}), x
+    fig_price = px.line(pd.DataFrame({"label": ["Now", "Y1", "Y2"], "price": [18.4, 28.5, 42.1]}), x="label", y="price", title="ASST Price Projection")
+    st.plotly_chart(fig_price, use_container_width=True)
+    fig_scatter = px.scatter(pd.DataFrame({"btc_ret": np.random.randn(50), "asst_ret": np.random.randn(50)*1.61}), x="btc_ret", y="asst_ret", title="BTC vs ASST Return Scatter")
+    st.plotly_chart(fig_scatter, use_container_width=True)
+
+with tabs[6]:  # SATA
+    st.header("SATA Model")
+    st.metric("SATA Dividend Rate", "13.0%")
+    st.metric("Par Trading Days", "34%")
+    st.info("~13% variable rate perpetual preferred. Par trading stats and issuance impact modeled here.")
+
+with tabs[7]:  # Preferreds
+    st.header("Preferred Stock Simulator")
+    st.dataframe(preferreds, use_container_width=True)
+    st.metric("Total Annual Dividend Liability", f"${total_annual_div:,.0f}")
+
+with tabs[8]:
+    st.header("Projections Table")
+    view = st.radio("View", ["Quarterly", "Annual"], horizontal=True)
+    display_df = projections_df[projections_df["quarter"] % 4 == 0] if view == "Annual" else projections_df
+    st.dataframe(display_df, use_container_width=True, height=600)
+    csv = display_df.to_csv(index=False)
+    st.download_button("Download Full Projections CSV", csv, f"punterjeff_projections_{selected_scenario}.csv", "text/csv")
+
+st.caption("Educational model only • Inspired by @PunterJeff • Not financial advice")
